@@ -113,11 +113,11 @@ button { font: inherit; cursor: pointer; color: var(--ink); }
 /* Preview window */
 .stage { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 40px); min-width: 0; }
 @media (max-width: 860px) { .stage { position: static; } }
-.canvas-box { border-bottom: 1px solid var(--ink); padding: 18px; display: flex; justify-content: center; align-items: flex-start; min-height: 300px; max-height: calc(100vh - 220px); overflow: auto; }
+.canvas-box { border-bottom: 1px solid var(--ink); padding: 22px; background-color: var(--paper); background-image: repeating-linear-gradient(45deg, var(--ink) 0 1px, transparent 1px 7px); background-size: auto; display: flex; justify-content: center; align-items: flex-start; min-height: 300px; max-height: calc(100vh - 220px); overflow: auto; }
 @media (max-width: 860px) { .canvas-box { max-height: none; } #preview { max-height: 75vh; } }
 .sizepick { display: inline-flex; align-items: center; gap: 6px; }
 select { font: inherit; font-size: 13px; color: var(--ink); background: var(--paper); border: 1px solid var(--ink); border-radius: 0; padding: 3px 6px; box-shadow: 1px 1px 0 var(--ink); }
-#preview { width: auto; height: auto; max-width: min(100%, 560px); max-height: calc(100vh - 260px); display: block; touch-action: none; }
+#preview { border: 1px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); width: auto; height: auto; max-width: min(100%, 560px); max-height: calc(100vh - 260px); display: block; touch-action: none; }
 #preview.grab { cursor: grab; }
 #preview.grabbing { cursor: grabbing; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 10px 12px; }
@@ -227,16 +227,16 @@ select { font: inherit; font-size: 13px; color: var(--ink); background: var(--pa
 
     <section class="stage win" aria-label="Preview and export">
       <div class="titlebar"><div class="stripes"><div class="closebox"><span></span></div></div><h2>Preview</h2><div class="stripes"></div></div>
-      <div class="canvas-box" id="canvasBox" style="background:#1cc7e6">
-        <canvas id="preview" width="1080" height="1080" aria-label="Post preview"></canvas>
+      <div class="canvas-box" id="canvasBox">
+        <canvas id="preview" width="1080" height="1350" aria-label="Post preview" style="background:#1cc7e6"></canvas>
       </div>
       <div class="actions">
         <button class="btn primary" id="saveBtn">Save PNG</button>
         <button class="btn" id="copyBtn">Copy image</button>
         <label class="sizepick"><span class="lab">SIZE</span>
           <select id="outSize" aria-label="Export size">
-            <option value="1080" selected>1080 × 1080</option>
-            <option value="1350">1080 × 1350</option>
+            <option value="1080">1080 × 1080</option>
+            <option value="1350" selected>1080 × 1350</option>
             <option value="1920">1080 × 1920</option>
             <option value="fit">Fit to card</option>
           </select></label>
@@ -589,13 +589,13 @@ select { font: inherit; font-size: 13px; color: var(--ink); background: var(--pa
     syncUI(); redraw();
   }));
   $('hiRes').addEventListener('change', redraw);
-  $('outSize').addEventListener('change', () => { try { localStorage.setItem('restyler-size', $('outSize').value); } catch (e) {} redraw(); });
-  try { const sv = localStorage.getItem('restyler-size'); if (sv && [...$('outSize').options].some(o => o.value === sv)) $('outSize').value = sv; } catch (e) {}
+  $('outSize').addEventListener('change', () => { try { localStorage.setItem('restyler-size-v2', $('outSize').value); } catch (e) {} redraw(); });
+  try { const sv = localStorage.getItem('restyler-size-v2'); if (sv && [...$('outSize').options].some(o => o.value === sv)) $('outSize').value = sv; } catch (e) {}
   $('withBg').addEventListener('change', () => { try { localStorage.setItem('restyler-withbg', $('withBg').checked ? '1' : '0'); } catch (e) {} redraw(); });
   try { $('withBg').checked = localStorage.getItem('restyler-withbg') === '1'; } catch (e) {}
   function setBg(color, btn) {
     bgColor = color;
-    $('canvasBox').style.background = color;
+    canvas.style.background = color;
     document.querySelectorAll('.bgpick button').forEach(x => x.setAttribute('aria-pressed', String(x === btn)));
     $('customSwatch').classList.toggle('on', !btn);
     if (!btn) $('customSwatch').style.background = color;

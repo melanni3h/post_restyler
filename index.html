@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important} body{margin:0} img{max-width:100%}</style>
+<title>Social Post Restyler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;700&family=Silkscreen&family=Inter:wght@400;600;700&display=swap">
+<style>
+/* Layout: 1-bit classic desktop. A menu bar on top, a column of small control windows
+   on the left, one big Preview window on the right. Same ink/paper system as Cue Deck. */
+:root {
+  --ink: #000000;
+  --paper: #ffffff;
+  --desk: #ffffff;           /* desktop dither paper */
+  --sel-ink: #ffffff;        /* text on a filled (selected) control */
+  --pixel: "Pixelify Sans", ui-monospace, Menlo, monospace;
+  --label: "Silkscreen", ui-monospace, monospace;
+}
+:root[data-app-theme="dark"] { --ink: #ecece4; --paper: #000000; --desk: #000000; --sel-ink: #000000; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+  background-color: var(--desk);
+  background-image: repeating-conic-gradient(var(--ink) 0% 25%, var(--desk) 0% 50%);
+  background-size: 2px 2px;
+  color: var(--ink); font-family: var(--pixel); font-size: 15px; line-height: 1.35;
+}
+
+/* Menu bar */
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--paper); }
+.menubar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--paper); border-bottom: 1px solid var(--ink);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  height: 26px; display: flex; align-items: center; gap: 22px; font-size: 14px;
+}
+.menubar b { font-weight: 700; }
+.menubar .right { margin-left: auto; font-family: var(--label); font-size: 9px; }
+
+.wrap { max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 22px 40px; }
+.layout { display: grid; grid-template-columns: minmax(0, 370px) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 860px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.controls { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+/* Window chrome */
+.win { background: var(--paper); border: 1px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); min-width: 0; }
+.titlebar { height: 20px; border-bottom: 1px solid var(--ink); display: flex; align-items: center; padding: 0 3px; }
+.stripes { flex: 1; height: 11px; background-image: repeating-linear-gradient(to bottom, var(--ink) 0 1px, var(--paper) 1px 2px); display: flex; align-items: center; }
+.closebox { margin-left: 6px; width: 15px; height: 11px; background: var(--paper); display: flex; justify-content: center; }
+.closebox span { width: 11px; height: 11px; border: 1px solid var(--ink); background: var(--paper); }
+.titlebar h2 { margin: 0; padding: 0 8px; font-size: 14px; font-weight: 700; background: var(--paper); white-space: nowrap; }
+.body { padding: 12px; display: flex; flex-direction: column; gap: 11px; }
+
+.lab { font-family: var(--label); font-size: 9px; letter-spacing: 0.04em; }
+.intro { font-size: 14px; margin: 0; }
+.hint { font-size: 13px; margin: 0; }
+.hint code { font-family: var(--pixel); border: 1px solid var(--ink); padding: 0 4px; }
+
+/* Fields */
+label.field { display: flex; flex-direction: column; gap: 5px; }
+input[type="text"], textarea {
+  font: inherit; font-family: "Inter", "Segoe UI", Helvetica, sans-serif; font-size: 14px;
+  color: var(--ink); background: var(--paper); border: 1px solid var(--ink); border-radius: 0;
+  padding: 7px 9px; width: 100%;
+}
+textarea { min-height: 120px; resize: vertical; }
+:focus-visible { outline: 2px dashed var(--ink); outline-offset: 2px; }
+
+/* Radio buttons (classic) */
+.radios { display: flex; gap: 18px; flex-wrap: wrap; }
+.radio, .check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; }
+.radio input, .check input { appearance: none; -webkit-appearance: none; margin: 0; flex: none; border: 1px solid var(--ink); background: var(--paper); cursor: pointer; display: grid; place-items: center; }
+.radio input { width: 14px; height: 14px; border-radius: 50%; }
+.radio input:checked::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ink); }
+.check input { width: 14px; height: 14px; }
+.check input:checked { background:
+  linear-gradient(45deg, transparent calc(50% - 0.75px), var(--ink) calc(50% - 0.75px) calc(50% + 0.75px), transparent calc(50% + 0.75px)),
+  linear-gradient(-45deg, transparent calc(50% - 0.75px), var(--ink) calc(50% - 0.75px) calc(50% + 0.75px), transparent calc(50% + 0.75px)), var(--paper); }
+.subopts { display: flex; flex-direction: column; gap: 8px; border-top: 1px dotted var(--ink); padding-top: 10px; }
+
+/* Drop zones */
+.drop { display: flex; align-items: center; gap: 12px; padding: 8px; border: 2px dashed var(--ink); background: var(--paper); cursor: pointer; min-width: 0; }
+.drop.over { background-image: repeating-linear-gradient(45deg, var(--ink) 0 1px, transparent 1px 5px); }
+.drop .thumb { width: 50px; height: 50px; object-fit: cover; flex: none; border: 1px solid var(--ink); background: var(--paper); }
+.drop.round .thumb { border-radius: 50%; }
+.drop .dt { display: flex; flex-direction: column; min-width: 0; background: var(--paper); }
+.drop .dt strong { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.drop .dt span { font-size: 12.5px; }
+.badge { font-family: var(--label); font-size: 8px; background: var(--ink); color: var(--sel-ink); padding: 1px 5px; font-weight: 400; }
+
+/* Sliders */
+.row { display: flex; align-items: center; gap: 10px; }
+.row .lbl { width: 54px; flex: none; }
+.row output { font-variant-numeric: tabular-nums; font-size: 13px; width: 62px; text-align: right; }
+input[type="range"] { -webkit-appearance: none; appearance: none; flex: 1; min-width: 0; height: 18px; background: transparent; cursor: pointer; }
+input[type="range"]::-webkit-slider-runnable-track { height: 6px; border: 1px solid var(--ink); background-color: var(--paper); background-image: repeating-conic-gradient(var(--ink) 0% 25%, var(--paper) 0% 50%); background-size: 2px 2px; }
+input[type="range"]::-moz-range-track { height: 4px; border: 1px solid var(--ink); background-color: var(--paper); background-image: repeating-conic-gradient(var(--ink) 0% 25%, var(--paper) 0% 50%); background-size: 2px 2px; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 16px; margin-top: -6px; background: var(--paper); border: 1px solid var(--ink); box-shadow: 1px 1px 0 var(--ink); border-radius: 0; }
+input[type="range"]::-moz-range-thumb { width: 10px; height: 14px; background: var(--paper); border: 1px solid var(--ink); box-shadow: 1px 1px 0 var(--ink); border-radius: 0; }
+
+/* Buttons */
+button { font: inherit; cursor: pointer; color: var(--ink); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--ink); background: var(--paper); border-radius: 6px; padding: 3px 10px; font-size: 13px; }
+.chip:active, .btn:active { background: var(--ink); color: var(--sel-ink); }
+.btn { border: 1px solid var(--ink); background: var(--paper); border-radius: 8px; padding: 6px 16px; font-size: 15px; font-weight: 700; min-height: 34px; }
+.btn.primary { outline: 3px solid var(--paper); box-shadow: 0 0 0 4px var(--ink); margin: 4px; }
+
+/* Preview window */
+.stage { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 40px); min-width: 0; }
+@media (max-width: 860px) { .stage { position: static; } }
+.canvas-box { border-bottom: 1px solid var(--ink); padding: 18px; display: flex; justify-content: center; align-items: flex-start; min-height: 300px; max-height: calc(100vh - 220px); overflow: auto; }
+@media (max-width: 860px) { .canvas-box { max-height: none; } }
+#preview { width: 100%; max-width: 560px; height: auto; display: block; touch-action: none; }
+#preview.grab { cursor: grab; }
+#preview.grabbing { cursor: grabbing; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 10px 12px; }
+.bgpick { display: flex; gap: 6px; align-items: center; margin-left: auto; font-size: 13px; }
+.bgpick button { width: 24px; height: 24px; border: 1px solid var(--ink); padding: 0; }
+.bgpick button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--paper), 0 0 0 3px var(--ink); }
+.swatch-custom { position: relative; width: 24px; height: 24px; border: 1px solid var(--ink); display: inline-block; cursor: pointer;
+  background: conic-gradient(#1cc7e6, #fad232, #e8447a, #2b124c, #1cc7e6); }
+.swatch-custom.on { box-shadow: 0 0 0 2px var(--paper), 0 0 0 3px var(--ink); }
+.swatch-custom input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; border: 0; padding: 0; }
+.theme-toggle { display: flex; gap: 0; border: 1px solid var(--ink); }
+.theme-toggle button { border: 0; background: var(--paper); font-size: 12px; padding: 0 8px; height: 18px; line-height: 18px; }
+.theme-toggle button[aria-pressed="true"] { background: var(--ink); color: var(--sel-ink); }
+.statusbar { border-top: 1px solid var(--ink); display: flex; gap: 12px; flex-wrap: wrap; justify-content: space-between; padding: 4px 12px; font-size: 12.5px; min-height: 26px; }
+.status { min-width: 0; }
+.spec { font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+</head>
+<body>
+<nav class="menubar" aria-label="App">
+  <b>Post Restyler</b>
+  <span class="right">1080 PX · PNG</span>
+  <div class="theme-toggle" role="group" aria-label="Theme">
+    <button type="button" data-theme-btn="light" aria-pressed="true">Light</button>
+    <button type="button" data-theme-btn="dark" aria-pressed="false">Dark</button>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="layout">
+    <section class="controls" aria-label="Post details">
+
+      <div class="win">
+        <div class="titlebar"><div class="stripes"><div class="closebox"><span></span></div></div><h2>Platform</h2><div class="stripes"></div></div>
+        <div class="body">
+          <p class="intro">Rebuild a Facebook or Instagram post as a clean card for your 1080 px graphics.</p>
+          <div class="radios" role="radiogroup" aria-label="Platform">
+            <label class="radio"><input type="radio" name="platform" id="pfFb" value="fb" checked> Facebook</label>
+            <label class="radio"><input type="radio" name="platform" id="pfIg" value="ig"> Instagram</label>
+          </div>
+          <div class="subopts">
+            <label class="check" id="fbImgWrap"><input type="checkbox" id="fbHasImage" checked> Include an image</label>
+            <div id="igOpts" hidden style="display:flex;flex-direction:column;gap:8px">
+              <label class="check"><input type="checkbox" id="igRing" checked> Story ring around profile picture</label>
+              <label class="check"><input type="checkbox" id="igLiked" checked> Heart filled in (liked)</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="win">
+        <div class="titlebar"><div class="stripes"><div class="closebox"><span></span></div></div><h2>Account</h2><div class="stripes"></div></div>
+        <div class="body">
+          <label class="field"><span class="lab">NAME OR USERNAME</span>
+            <input type="text" id="username" value="sample.teacher" autocomplete="off">
+          </label>
+          <div class="drop round" id="dzAvatar" tabindex="0" role="button" aria-label="Profile picture: click, drop or paste an image">
+            <img class="thumb" id="avatarThumb" alt="">
+            <div class="dt"><strong>Profile picture <span class="badge" id="avatarBadge">SAMPLE</span></strong><span>Click, drop, or paste</span></div>
+            <input type="file" id="avatarFile" accept="image/*" hidden>
+          </div>
+        </div>
+      </div>
+
+      <div class="win">
+        <div class="titlebar"><div class="stripes"><div class="closebox"><span></span></div></div><h2>Post Text</h2><div class="stripes"></div></div>
+        <div class="body">
+          <label class="field"><span class="lab" id="captionLabel">CAPTION</span>
+            <textarea id="caption" aria-labelledby="captionLabel">First day back!!! 🥳✨🎉🌈</textarea>
+          </label>
+          <p class="hint" id="hintFb">Put tagged names in square brackets to make them blue, like <code>[Zearn]</code>. Line breaks are kept.</p>
+          <p class="hint" id="hintIg" hidden>The username is added in bold before the caption automatically.</p>
+        </div>
+      </div>
+
+      <div class="win" id="imgGroup">
+        <div class="titlebar"><div class="stripes"><div class="closebox"><span></span></div></div><h2>Featured Image</h2><div class="stripes"></div></div>
+        <div class="body">
+          <div class="drop" id="dzImage" tabindex="0" role="button" aria-label="Featured image: click, drop or paste an image">
+            <img class="thumb" id="imageThumb" alt="">
+            <div class="dt"><strong>Post image <span class="badge" id="imageBadge">SAMPLE</span></strong><span>Click, drop, or paste (Ctrl/Cmd+V)</span></div>
+            <input type="file" id="imageFile" accept="image/*" hidden>
+          </div>
+          <div class="row"><span class="lbl">Height</span>
+            <input type="range" id="imgHeight" min="0.35" max="1.4" step="0.005" value="1" aria-label="Image window height">
+            <output id="imgHeightOut">800 px</output>
+          </div>
+          <div class="chips" aria-label="Height presets">
+            <button class="chip" data-ratio="1">Square</button>
+            <button class="chip" data-ratio="1.25">Portrait 4:5</button>
+            <button class="chip" data-ratio="0.5236">Landscape</button>
+            <button class="chip" data-ratio="photo">Match photo</button>
+          </div>
+          <div class="row"><span class="lbl">Zoom</span>
+            <input type="range" id="zoom" min="1" max="4" step="0.01" value="1" aria-label="Image zoom">
+            <output id="zoomOut">100%</output>
+          </div>
+          <div class="row" style="justify-content:space-between">
+            <p class="hint">Drag the image in the preview to reposition it.</p>
+            <button class="chip" id="resetCrop">Reset crop</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="stage win" aria-label="Preview and export">
+      <div class="titlebar"><div class="stripes"><div class="closebox"><span></span></div></div><h2>Preview</h2><div class="stripes"></div></div>
+      <div class="canvas-box" id="canvasBox" style="background:#1cc7e6">
+        <canvas id="preview" width="1080" height="1080" aria-label="Post preview"></canvas>
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="saveBtn">Save PNG</button>
+        <button class="btn" id="copyBtn">Copy image</button>
+        <label class="check"><input type="checkbox" id="withBg"> Include background</label>
+        <label class="check"><input type="checkbox" id="hiRes"> 2× size</label>
+        <div class="bgpick" role="group" aria-label="Preview background"><span class="lab">BG</span>
+          <button data-bg="#1cc7e6" style="background:#1cc7e6" aria-pressed="true" title="Cyan #1CC7E6"></button>
+          <button data-bg="#fad232" style="background:#fad232" aria-pressed="false" title="Yellow #FAD232"></button>
+          <button data-bg="#2b124c" style="background:#2b124c" aria-pressed="false" title="Purple #2B124C"></button>
+          <button data-bg="#ebeff2" style="background:#ebeff2" aria-pressed="false" title="Light grey #EBEFF2"></button>
+          <button data-bg="#ffffff" style="background:#ffffff" aria-pressed="false" title="White #FFFFFF"></button>
+          <label class="swatch-custom" id="customSwatch" title="Custom color"><input type="color" id="customBg" value="#e8447a" aria-label="Custom background color"></label>
+        </div>
+      </div>
+      <div class="statusbar">
+        <span class="status" id="status" role="status"></span>
+        <span class="spec" id="spec"></span>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---------- Fixed design spec (change here to change every post) ----------
+  const OUT_W = 1080;        // export width
+  const CARD_W = 880;        // white card width, identical for every post
+  const MARGIN_X = (OUT_W - CARD_W) / 2;
+  const MARGIN_Y = 90;       // room above/below the card for the shadow
+  const RADIUS = 36;
+  const FONT = '"Inter", "Segoe UI", Helvetica, Arial, sans-serif';
+  const TAG_BLUE = '#1b62c9';
+
+  const $ = (id) => document.getElementById(id);
+  const canvas = $('preview');
+  const ctx = canvas.getContext('2d');
+  const mctx = document.createElement('canvas').getContext('2d');
+
+  const state = {
+    platform: 'fb',
+    fbHasImage: true,
+    igRing: true,
+    igLiked: true,
+    username: 'sample.teacher',
+    caption: $('caption').value,
+    avatar: null, avatarIsSample: true,
+    image: null, imageIsSample: true,
+    ratio: 1, zoom: 1, cx: 0.5, cy: 0.5,
+  };
+  let lastImgRect = null;
+  let bgColor = '#1cc7e6';
+  const currentBg = () => ($('withBg').checked ? bgColor : null);
+
+  try {
+    const saved = JSON.parse(localStorage.getItem('restyler-prefs') || '{}');
+    if (saved.platform === 'ig' || saved.platform === 'fb') state.platform = saved.platform;
+  } catch (e) {}
+  function savePrefs() { try { localStorage.setItem('restyler-prefs', JSON.stringify({ platform: state.platform })); } catch (e) {} }
+
+  // ---------- Sample content ----------
+  function makeSampleImage() {
+    const c = document.createElement('canvas'); c.width = 1200; c.height = 1200;
+    const g = c.getContext('2d');
+    const grd = g.createLinearGradient(0, 0, 1200, 1200);
+    grd.addColorStop(0, '#f3a64b'); grd.addColorStop(1, '#e2603c');
+    g.fillStyle = grd; g.fillRect(0, 0, 1200, 1200);
+    g.fillStyle = '#2f7d4f'; g.fillRect(0, 760, 1200, 440);
+    g.strokeStyle = '#1e3a6b'; g.lineWidth = 14;
+    for (let x = 150; x < 1200; x += 300) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 1200); g.stroke(); }
+    g.beginPath(); g.moveTo(0, 760); g.lineTo(1200, 760); g.stroke();
+    g.save(); g.translate(600, 560); g.rotate(-0.12);
+    g.fillStyle = '#fff'; g.shadowColor = 'rgba(0,0,0,.25)'; g.shadowBlur = 30;
+    g.fillRect(-300, -200, 600, 400); g.shadowColor = 'transparent';
+    g.fillStyle = '#c9ced6';
+    for (let i = 0; i < 7; i++) g.fillRect(-250, -150 + i * 48, 220 + (i % 3) * 60, 16);
+    g.fillRect(20, -150, 230, 330);
+    g.restore();
+    g.fillStyle = 'rgba(255,255,255,.92)'; g.font = '600 46px ' + FONT; g.textAlign = 'center';
+    g.fillText('Sample photo: drop yours in', 600, 120);
+    const img = new Image(); img.src = c.toDataURL('image/png'); return img;
+  }
+  function makeSampleAvatar() {
+    const c = document.createElement('canvas'); c.width = 200; c.height = 200;
+    const g = c.getContext('2d');
+    g.fillStyle = '#7b8fd8'; g.fillRect(0, 0, 200, 200);
+    g.fillStyle = '#fff'; g.font = '700 84px ' + FONT; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('ST', 100, 106);
+    const img = new Image(); img.src = c.toDataURL('image/png'); return img;
+  }
+
+  // ---------- Helpers ----------
+  function roundRectPath(g, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    g.beginPath();
+    g.moveTo(x + r, y); g.lineTo(x + w - r, y); g.arcTo(x + w, y, x + w, y + r, r);
+    g.lineTo(x + w, y + h - r); g.arcTo(x + w, y + h, x + w - r, y + h, r);
+    g.lineTo(x + r, y + h); g.arcTo(x, y + h, x, y + h - r, r);
+    g.lineTo(x, y + r); g.arcTo(x, y, x + r, y, r); g.closePath();
+  }
+  function imgReady(img) { return img && img.complete && img.naturalWidth > 0; }
+
+  // Rich text wrap: runs = [{text, font, color}]
+  function wrapRuns(runs, maxW) {
+    const lines = [[]]; let x = 0;
+    const trimEnd = (line) => { while (line.length && /^\s+$/.test(line[line.length - 1].text)) { x -= line[line.length - 1].w; line.pop(); } };
+    for (const run of runs) {
+      mctx.font = run.font;
+      const toks = run.text.replace(/\r/g, '').split(/(\n|[ \t]+)/).filter(t => t !== '');
+      for (const tok of toks) {
+        if (tok === '\n') { trimEnd(lines[lines.length - 1]); lines.push([]); x = 0; continue; }
+        const isSpace = /^[ \t]+$/.test(tok);
+        const w = mctx.measureText(tok).width;
+        if (isSpace) { if (x === 0) continue; lines[lines.length - 1].push({ text: tok, font: run.font, color: run.color, x, w }); x += w; continue; }
+        if (x + w > maxW && x > 0) { trimEnd(lines[lines.length - 1]); lines.push([]); x = 0; }
+        if (w > maxW) { // very long word: break by character
+          let buf = '';
+          for (const ch of Array.from(tok)) {
+            const bw = mctx.measureText(buf + ch).width;
+            if (x + bw > maxW && buf) {
+              lines[lines.length - 1].push({ text: buf, font: run.font, color: run.color, x, w: mctx.measureText(buf).width });
+              lines.push([]); x = 0; buf = ch;
+            } else buf += ch;
+          }
+          if (buf) { const bw = mctx.measureText(buf).width; lines[lines.length - 1].push({ text: buf, font: run.font, color: run.color, x, w: bw }); x += bw; }
+          continue;
+        }
+        lines[lines.length - 1].push({ text: tok, font: run.font, color: run.color, x, w }); x += w;
+      }
+    }
+    trimEnd(lines[lines.length - 1]);
+    while (lines.length && lines[lines.length - 1].length === 0) lines.pop();
+    return lines;
+  }
+  function drawLines(g, lines, x, y, lineH) {
+    g.textBaseline = 'middle'; g.textAlign = 'left';
+    lines.forEach((line, i) => {
+      for (const p of line) { g.font = p.font; g.fillStyle = p.color; g.fillText(p.text, x + p.x, y + i * lineH + lineH / 2); }
+    });
+  }
+  function fbRuns(text) {
+    const reg = '400 26px ' + FONT, runs = [];
+    const re = /\[([^\]\n]+)\]/g; let last = 0, m;
+    while ((m = re.exec(text))) {
+      if (m.index > last) runs.push({ text: text.slice(last, m.index), font: reg, color: '#1c1e21' });
+      runs.push({ text: m[1], font: reg, color: TAG_BLUE });
+      last = re.lastIndex;
+    }
+    if (last < text.length) runs.push({ text: text.slice(last), font: reg, color: '#1c1e21' });
+    return runs;
+  }
+
+  // ---------- Layout ----------
+  function computeLayout() {
+    const L = { platform: state.platform };
+    if (state.platform === 'ig') {
+      L.headerH = 120;
+      L.img = { x: 0, y: 120, w: CARD_W, h: Math.round(CARD_W * state.ratio), r: 0 };
+      L.iconsY = L.img.y + L.img.h + 28; L.iconSize = 44;
+      const cap = state.caption.trim();
+      L.lineH = 37;
+      L.lines = cap ? wrapRuns([
+        { text: state.username || 'username', font: '600 25px ' + FONT, color: '#0c1014' },
+        { text: ' ' + cap, font: '400 25px ' + FONT, color: '#0c1014' }
+      ], CARD_W - 80) : [];
+      L.capY = L.iconsY + L.iconSize + 22;
+      L.cardH = L.lines.length ? L.capY + L.lines.length * L.lineH + 34 : L.iconsY + L.iconSize + 30;
+    } else {
+      const pad = 40, av = 80;
+      L.pad = pad; L.av = av;
+      L.lineH = 38;
+      const text = state.caption.replace(/\s+$/, '');
+      L.lines = text.trim() ? wrapRuns(fbRuns(text), CARD_W - pad * 2) : [];
+      L.textY = pad + av + 22;
+      const textBottom = L.lines.length ? L.textY + L.lines.length * L.lineH : pad + av;
+      if (state.fbHasImage) {
+        const w = CARD_W - pad * 2;
+        L.img = { x: pad, y: textBottom + 24, w, h: Math.round(w * state.ratio), r: 24 };
+        L.cardH = L.img.y + L.img.h + pad;
+      } else {
+        L.img = null;
+        L.cardH = textBottom + pad + (L.lines.length ? 4 : 0);
+      }
+    }
+    L.cardH = Math.round(L.cardH);
+    L.outH = L.cardH + MARGIN_Y * 2;
+    return L;
+  }
+
+  // ---------- Drawing ----------
+  const ICONS = {
+    heart: new Path2D('M12 20.6s-7.4-4.5-9.4-9C1.2 8.2 3.2 4.6 6.8 4.6c2.1 0 3.7 1.2 5.2 3.1 1.5-1.9 3.1-3.1 5.2-3.1 3.6 0 5.6 3.6 4.2 7-2 4.5-9.4 9-9.4 9z'),
+    comment: new Path2D('M20.6 16.4a9.4 9.4 0 1 0-3.4 3.7L21.6 21.4z'),
+    repost: new Path2D('M16.5 2.5l3 3-3 3M4.5 11V9.5a4 4 0 0 1 4-4h11M7.5 21.5l-3-3 3-3M19.5 13v1.5a4 4 0 0 1-4 4h-11'),
+    send: new Path2D('M21.8 2.6L2.4 9.4l7.6 3.5 3.6 7.6zM21.8 2.6L10 12.9'),
+  };
+  function drawIcon(g, path, x, y, size, mode) {
+    g.save(); g.translate(x, y); g.scale(size / 24, size / 24);
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    if (mode === 'fill') { g.fillStyle = '#ff3040'; g.fill(path); }
+    else { g.strokeStyle = '#0c1014'; g.lineWidth = 1.9; g.stroke(path); }
+    g.restore();
+  }
+  function drawCircleImage(g, img, cx, cy, r) {
+    g.save(); g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.closePath(); g.clip();
+    g.fillStyle = '#e4e6eb'; g.fillRect(cx - r, cy - r, r * 2, r * 2);
+    if (imgReady(img)) {
+      const s = Math.max((r * 2) / img.naturalWidth, (r * 2) / img.naturalHeight);
+      const w = img.naturalWidth * s, h = img.naturalHeight * s;
+      g.drawImage(img, cx - w / 2, cy - h / 2, w, h);
+    }
+    g.restore();
+  }
+  function clampCrop(rect) {
+    const img = state.image; if (!imgReady(img)) return;
+    const s = Math.max(rect.w / img.naturalWidth, rect.h / img.naturalHeight) * state.zoom;
+    const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
+    const hx = rect.w / 2 / dw, hy = rect.h / 2 / dh;
+    state.cx = Math.min(1 - hx, Math.max(hx, state.cx));
+    state.cy = Math.min(1 - hy, Math.max(hy, state.cy));
+  }
+  function drawFeatured(g, rect) {
+    g.save();
+    roundRectPath(g, rect.x, rect.y, rect.w, rect.h, rect.r); g.clip();
+    g.fillStyle = '#eef0f3'; g.fillRect(rect.x, rect.y, rect.w, rect.h);
+    const img = state.image;
+    if (imgReady(img)) {
+      clampCrop(rect);
+      const s = Math.max(rect.w / img.naturalWidth, rect.h / img.naturalHeight) * state.zoom;
+      const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
+      g.drawImage(img, rect.x + rect.w / 2 - state.cx * dw, rect.y + rect.h / 2 - state.cy * dh, dw, dh);
+    }
+    g.restore();
+  }
+
+  function render(target, scale, bg) {
+    const L = computeLayout();
+    target.canvas.width = OUT_W * scale;
+    target.canvas.height = L.outH * scale;
+    const g = target;
+    g.setTransform(scale, 0, 0, scale, 0, 0);
+    g.clearRect(0, 0, OUT_W, L.outH);
+    if (bg) { g.fillStyle = bg; g.fillRect(0, 0, OUT_W, L.outH); }
+    g.translate(MARGIN_X, MARGIN_Y);
+
+    // Soft drop shadow (two layers: wide + contact)
+    g.save();
+    g.shadowColor = 'rgba(20, 30, 50, 0.16)'; g.shadowBlur = 56 * scale; g.shadowOffsetY = 18 * scale;
+    roundRectPath(g, 0, 0, CARD_W, L.cardH, RADIUS); g.fillStyle = '#fff'; g.fill();
+    g.restore();
+    g.save();
+    g.shadowColor = 'rgba(20, 30, 50, 0.08)'; g.shadowBlur = 6 * scale; g.shadowOffsetY = 1 * scale;
+    roundRectPath(g, 0, 0, CARD_W, L.cardH, RADIUS); g.fillStyle = '#fff'; g.fill();
+    g.restore();
+
+    g.save();
+    roundRectPath(g, 0, 0, CARD_W, L.cardH, RADIUS); g.clip();
+    const name = state.username || 'username';
+
+    if (L.platform === 'ig') {
+      const acx = 40 + 36, acy = 60;
+      if (state.igRing) {
+        const grd = g.createLinearGradient(acx - 36, acy + 36, acx + 36, acy - 36);
+        grd.addColorStop(0, '#feda75'); grd.addColorStop(0.3, '#fa7e1e'); grd.addColorStop(0.6, '#d62976'); grd.addColorStop(1, '#962fbf');
+        g.beginPath(); g.arc(acx, acy, 37, 0, Math.PI * 2); g.fillStyle = grd; g.fill();
+        g.beginPath(); g.arc(acx, acy, 33, 0, Math.PI * 2); g.fillStyle = '#fff'; g.fill();
+        drawCircleImage(g, state.avatar, acx, acy, 30);
+      } else {
+        drawCircleImage(g, state.avatar, acx, acy, 35);
+        g.beginPath(); g.arc(acx, acy, 35, 0, Math.PI * 2); g.strokeStyle = 'rgba(0,0,0,.1)'; g.lineWidth = 1; g.stroke();
+      }
+      g.font = '600 26px ' + FONT; g.fillStyle = '#0c1014'; g.textBaseline = 'middle'; g.textAlign = 'left';
+      g.fillText(name, acx + 36 + 22, acy + 1);
+
+      drawFeatured(g, L.img);
+      lastImgRect = L.img;
+
+      const s = L.iconSize, gap = 26; let x = 38;
+      drawIcon(g, ICONS.heart, x, L.iconsY, s, state.igLiked ? 'fill' : 'stroke'); x += s + gap;
+      drawIcon(g, ICONS.comment, x, L.iconsY, s, 'stroke'); x += s + gap;
+      drawIcon(g, ICONS.repost, x, L.iconsY, s, 'stroke'); x += s + gap;
+      drawIcon(g, ICONS.send, x, L.iconsY, s, 'stroke');
+
+      drawLines(g, L.lines, 40, L.capY, L.lineH);
+    } else {
+      const acx = L.pad + L.av / 2, acy = L.pad + L.av / 2;
+      drawCircleImage(g, state.avatar, acx, acy, L.av / 2);
+      g.beginPath(); g.arc(acx, acy, L.av / 2, 0, Math.PI * 2); g.strokeStyle = 'rgba(0,0,0,.08)'; g.lineWidth = 1; g.stroke();
+      g.font = '600 27px ' + FONT; g.fillStyle = '#050505'; g.textBaseline = 'middle'; g.textAlign = 'left';
+      g.fillText(name, L.pad + L.av + 20, acy);
+      drawLines(g, L.lines, L.pad, L.textY, L.lineH);
+      if (L.img) { drawFeatured(g, L.img); lastImgRect = L.img; } else lastImgRect = null;
+    }
+    g.restore();
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    return L;
+  }
+
+  function redraw() {
+    const L = render(ctx, 1, currentBg());
+    const scale = $('hiRes').checked ? 2 : 1;
+    $('spec').textContent = `${OUT_W * scale} × ${L.outH * scale} px · ${$('withBg').checked ? 'background ' + bgColor.toUpperCase() : 'transparent'}`;
+    if (L.img) $('imgHeightOut').value = L.img.h + ' px';
+  }
+
+  // ---------- UI syncing ----------
+  function syncUI() {
+    const fb = state.platform === 'fb';
+    $('pfFb').checked = fb; $('pfIg').checked = !fb;
+    $('fbImgWrap').hidden = !fb;
+    $('igOpts').hidden = fb;
+    $('hintFb').hidden = !fb; $('hintIg').hidden = fb;
+    $('captionLabel').textContent = fb ? 'Post text (shown above the image)' : 'Caption (shown below the image)';
+    $('imgGroup').hidden = fb && !state.fbHasImage;
+    $('avatarBadge').hidden = !state.avatarIsSample;
+    $('imageBadge').hidden = !state.imageIsSample;
+    $('imgHeight').value = state.ratio;
+    $('zoom').value = state.zoom;
+    $('zoomOut').value = Math.round(state.zoom * 100) + '%';
+  }
+
+  document.querySelectorAll('input[name="platform"]').forEach(r => r.addEventListener('change', () => {
+    state.platform = r.value; savePrefs(); syncUI(); redraw();
+  }));
+  $('fbHasImage').addEventListener('change', e => { state.fbHasImage = e.target.checked; syncUI(); redraw(); });
+  $('igRing').addEventListener('change', e => { state.igRing = e.target.checked; redraw(); });
+  $('igLiked').addEventListener('change', e => { state.igLiked = e.target.checked; redraw(); });
+  $('username').addEventListener('input', e => { state.username = e.target.value; redraw(); });
+  $('caption').addEventListener('input', e => { state.caption = e.target.value; redraw(); });
+  $('imgHeight').addEventListener('input', e => { state.ratio = parseFloat(e.target.value); redraw(); });
+  $('zoom').addEventListener('input', e => { state.zoom = parseFloat(e.target.value); $('zoomOut').value = Math.round(state.zoom * 100) + '%'; redraw(); });
+  $('resetCrop').addEventListener('click', () => { state.zoom = 1; state.cx = 0.5; state.cy = 0.5; syncUI(); redraw(); });
+  document.querySelectorAll('.chip[data-ratio]').forEach(b => b.addEventListener('click', () => {
+    let r = b.dataset.ratio;
+    if (r === 'photo') {
+      r = imgReady(state.image) ? state.image.naturalHeight / state.image.naturalWidth : 1;
+    }
+    state.ratio = Math.min(1.4, Math.max(0.35, parseFloat(r)));
+    syncUI(); redraw();
+  }));
+  $('hiRes').addEventListener('change', redraw);
+  $('withBg').addEventListener('change', () => { try { localStorage.setItem('restyler-withbg', $('withBg').checked ? '1' : '0'); } catch (e) {} redraw(); });
+  try { $('withBg').checked = localStorage.getItem('restyler-withbg') === '1'; } catch (e) {}
+  function setBg(color, btn) {
+    bgColor = color;
+    $('canvasBox').style.background = color;
+    document.querySelectorAll('.bgpick button').forEach(x => x.setAttribute('aria-pressed', String(x === btn)));
+    $('customSwatch').classList.toggle('on', !btn);
+    if (!btn) $('customSwatch').style.background = color;
+    redraw();
+  }
+  document.querySelectorAll('.bgpick button').forEach(b => b.addEventListener('click', () => setBg(b.dataset.bg, b)));
+  $('customBg').addEventListener('input', e => setBg(e.target.value, null));
+
+  function setTheme(t) {
+    document.documentElement.setAttribute('data-app-theme', t);
+    document.querySelectorAll('[data-theme-btn]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.themeBtn === t)));
+    try { localStorage.setItem('restyler-theme', t); } catch (e) {}
+  }
+  document.querySelectorAll('[data-theme-btn]').forEach(b => b.addEventListener('click', () => setTheme(b.dataset.themeBtn)));
+  let savedTheme = 'light';
+  try { if (localStorage.getItem('restyler-theme') === 'dark') savedTheme = 'dark'; } catch (e) {}
+  setTheme(savedTheme);
+
+  // ---------- Image inputs: click, drop, paste ----------
+  function loadFile(file, which) {
+    if (!file || !file.type.startsWith('image/')) { setStatus('That file isn’t an image. Use a PNG, JPG, WebP or GIF.'); return; }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      if (which === 'avatar') { state.avatar = img; state.avatarIsSample = false; $('avatarThumb').src = url; }
+      else {
+        state.image = img; state.imageIsSample = false; $('imageThumb').src = url;
+        state.zoom = 1; state.cx = 0.5; state.cy = 0.5;
+        if (state.platform === 'fb' && !state.fbHasImage) { state.fbHasImage = true; $('fbHasImage').checked = true; }
+      }
+      syncUI(); redraw(); setStatus(which === 'avatar' ? 'Profile picture updated.' : 'Image added. Drag it in the preview to adjust the crop.');
+    };
+    img.onerror = () => setStatus('Couldn’t read that image. Try saving it as PNG or JPG first.');
+    img.src = url;
+  }
+  function wireDrop(zoneId, inputId, which) {
+    const zone = $(zoneId), input = $(inputId);
+    zone.addEventListener('click', () => input.click());
+    zone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); } });
+    input.addEventListener('change', () => { loadFile(input.files[0], which); input.value = ''; });
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('over'));
+    zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('over'); loadFile(e.dataTransfer.files[0], which); });
+  }
+  wireDrop('dzAvatar', 'avatarFile', 'avatar');
+  wireDrop('dzImage', 'imageFile', 'image');
+  // Dropping onto the preview sets the featured image
+  canvas.addEventListener('dragover', e => e.preventDefault());
+  canvas.addEventListener('drop', e => { e.preventDefault(); loadFile(e.dataTransfer.files[0], 'image'); });
+
+  document.addEventListener('paste', e => {
+    const items = Array.from(e.clipboardData?.items || []);
+    const it = items.find(i => i.type.startsWith('image/'));
+    if (!it) return;
+    e.preventDefault();
+    const which = document.activeElement === $('dzAvatar') ? 'avatar' : 'image';
+    loadFile(it.getAsFile(), which);
+  });
+
+  // ---------- Drag to reposition, wheel to zoom ----------
+  function toCanvas(e) {
+    const r = canvas.getBoundingClientRect();
+    const k = canvas.width / r.width;
+    return { x: (e.clientX - r.left) * k - MARGIN_X, y: (e.clientY - r.top) * k - MARGIN_Y };
+  }
+  function inImage(p) { const R = lastImgRect; return R && p.x >= R.x && p.x <= R.x + R.w && p.y >= R.y && p.y <= R.y + R.h; }
+  let drag = null;
+  canvas.addEventListener('pointermove', e => {
+    const p = toCanvas(e);
+    if (drag && imgReady(state.image)) {
+      const R = lastImgRect, img = state.image;
+      const s = Math.max(R.w / img.naturalWidth, R.h / img.naturalHeight) * state.zoom;
+      state.cx = drag.cx - (p.x - drag.x) / (img.naturalWidth * s);
+      state.cy = drag.cy - (p.y - drag.y) / (img.naturalHeight * s);
+      redraw();
+    } else {
+      canvas.classList.toggle('grab', inImage(p));
+    }
+  });
+  canvas.addEventListener('pointerdown', e => {
+    const p = toCanvas(e);
+    if (!inImage(p)) return;
+    drag = { x: p.x, y: p.y, cx: state.cx, cy: state.cy };
+    canvas.setPointerCapture(e.pointerId); canvas.classList.add('grabbing');
+  });
+  const endDrag = () => { drag = null; canvas.classList.remove('grabbing'); };
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
+  canvas.addEventListener('wheel', e => {
+    if (!inImage(toCanvas(e))) return;
+    e.preventDefault();
+    state.zoom = Math.min(4, Math.max(1, state.zoom * (e.deltaY < 0 ? 1.06 : 1 / 1.06)));
+    syncUI(); redraw();
+  }, { passive: false });
+
+  // ---------- Export ----------
+  let statusTimer;
+  function setStatus(msg) { $('status').textContent = msg; clearTimeout(statusTimer); statusTimer = setTimeout(() => $('status').textContent = '', 7000); }
+  function exportBlob() {
+    const scale = $('hiRes').checked ? 2 : 1;
+    const off = document.createElement('canvas').getContext('2d');
+    render(off, scale, currentBg());
+    redraw(); // keep lastImgRect in preview coordinates
+    return new Promise(res => off.canvas.toBlob(res, 'image/png'));
+  }
+  function fileName() {
+    const base = (state.username || 'post').trim().replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '') || 'post';
+    return `${base}-${state.platform === 'ig' ? 'instagram' : 'facebook'}.png`;
+  }
+  let downloadsPromise = null;
+  function getDownloads() {
+    if (!downloadsPromise) downloadsPromise = (window.claude && typeof window.claude.use === 'function') ? window.claude.use('downloads').catch(() => null) : Promise.resolve(null);
+    return downloadsPromise;
+  }
+  getDownloads();
+  $('saveBtn').addEventListener('click', async () => {
+    const blob = await exportBlob();
+    const dl = await getDownloads();
+    if (dl) {
+      try { await dl.save({ filename: fileName(), data: blob }); setStatus('Saved ' + fileName() + '.'); return; }
+      catch (err) {
+        if (err && err.code === 'declined') { setStatus('Save cancelled.'); return; }
+        if (err && err.code === 'rate_limited') { setStatus('A save is already waiting for confirmation.'); return; }
+      }
+    }
+    // Plain browser (opened as a local file)
+    try {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileName();
+      document.body.appendChild(a); a.click(); a.remove();
+      setStatus('If nothing downloaded, right-click the preview and choose “Save image as…”.');
+    } catch (e) { setStatus('Right-click the preview and choose “Save image as…”.'); }
+  });
+  $('copyBtn').addEventListener('click', () => {
+    if (!navigator.clipboard || typeof ClipboardItem === 'undefined') { setStatus('Copying images isn’t supported here. Use Save PNG instead.'); return; }
+    const p = exportBlob();
+    navigator.clipboard.write([new ClipboardItem({ 'image/png': p })])
+      .then(() => setStatus('Copied. Paste it straight into Canva.'))
+      .catch(() => setStatus('Copying isn’t allowed in this view. Use Save PNG, or right-click the preview and copy.'));
+  });
+
+  // ---------- Boot ----------
+  state.image = makeSampleImage(); $('imageThumb').src = state.image.src;
+  state.avatar = makeSampleAvatar(); $('avatarThumb').src = state.avatar.src;
+  state.image.onload = redraw; state.avatar.onload = redraw;
+  syncUI(); redraw();
+  Promise.all([
+    document.fonts.load('400 26px Inter'), document.fonts.load('600 26px Inter'), document.fonts.load('700 26px Inter')
+  ]).catch(() => {}).then(() => {
+    // regenerate samples so their lettering uses the loaded font
+    if (state.imageIsSample) { const im = makeSampleImage(); im.onload = () => { if (!state.imageIsSample) return; state.image = im; $('imageThumb').src = im.src; redraw(); }; }
+    if (state.avatarIsSample) { const av = makeSampleAvatar(); av.onload = () => { if (!state.avatarIsSample) return; state.avatar = av; $('avatarThumb').src = av.src; redraw(); }; }
+    redraw();
+  });
+})();
+</script>
+
+</body>
+</html>

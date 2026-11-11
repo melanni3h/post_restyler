@@ -128,6 +128,14 @@ select { font: inherit; font-size: 13px; color: var(--ink); background: var(--pa
   background: conic-gradient(#1cc7e6, #fad232, #e8447a, #2b124c, #1cc7e6); }
 .swatch-custom.on { box-shadow: 0 0 0 2px var(--paper), 0 0 0 3px var(--ink); }
 .swatch-custom input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; border: 0; padding: 0; }
+.bgthumb-empty { background-image: repeating-linear-gradient(45deg, var(--ink) 0 1px, transparent 1px 6px); }
+.bglib { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 8px; }
+.bglib:empty { display: none; }
+.bgitem { position: relative; aspect-ratio: 4 / 5; max-width: 100%; }
+.bgitem .pick { width: 100%; height: 100%; padding: 0; border: 1px solid var(--ink); background-size: cover; background-position: center; display: block; }
+.bgitem .pick[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--ink); }
+.bgitem .del { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; padding: 0; border: 1px solid var(--ink); border-radius: 50%; background: var(--paper); font-size: 12px; line-height: 18px; text-align: center; }
+.bgitem .del:hover { background: var(--ink); color: var(--sel-ink); }
 .theme-toggle { display: flex; gap: 0; border: 1px solid var(--ink); }
 .theme-toggle button { border: 0; background: var(--paper); font-size: 12px; padding: 0 8px; height: 18px; line-height: 18px; }
 .theme-toggle button[aria-pressed="true"] { background: var(--ink); color: var(--sel-ink); }
@@ -192,6 +200,15 @@ select { font: inherit; font-size: 13px; color: var(--ink); background: var(--pa
           </label>
           <p class="hint" id="hintFb">Put tagged names in square brackets to make them blue, like <code>[Zearn]</code>. Line breaks are kept.</p>
           <p class="hint" id="hintIg" hidden>The username is added in bold before the caption automatically.</p>
+          <div class="row"><span class="lbl">Text</span>
+            <input type="range" id="textSize" min="0.75" max="1.6" step="0.05" value="1" aria-label="Post text size">
+            <output id="textSizeOut">100%</output>
+          </div>
+          <div class="row"><span class="lbl">Name</span>
+            <input type="range" id="nameSize" min="0.75" max="1.6" step="0.05" value="1" aria-label="Name size">
+            <output id="nameSizeOut">100%</output>
+          </div>
+          <div class="row" style="justify-content:flex-end"><button class="chip" id="resetText">Reset sizes</button></div>
         </div>
       </div>
 
@@ -223,12 +240,25 @@ select { font: inherit; font-size: 13px; color: var(--ink); background: var(--pa
           </div>
         </div>
       </div>
+
+      <div class="win">
+        <div class="titlebar"><div class="stripes"><div class="closebox"><span></span></div></div><h2>Backgrounds</h2><div class="stripes"></div></div>
+        <div class="body">
+          <div class="drop" id="dzBg" tabindex="0" role="button" aria-label="Background image: click, drop or paste an image">
+            <div class="thumb bgthumb-empty" aria-hidden="true"></div>
+            <div class="dt"><strong>Add a background</strong><span>Click, drop, or paste. Fills the whole frame.</span></div>
+            <input type="file" id="bgFile" accept="image/*" multiple hidden>
+          </div>
+          <div class="bglib" id="bgLib" aria-label="Your backgrounds"></div>
+          <p class="hint" id="bgLibHint">Backgrounds you add are kept in this browser, so they're here next time.</p>
+        </div>
+      </div>
     </section>
 
     <section class="stage win" aria-label="Preview and export">
       <div class="titlebar"><div class="stripes"><div class="closebox"><span></span></div></div><h2>Preview</h2><div class="stripes"></div></div>
       <div class="canvas-box" id="canvasBox">
-        <canvas id="preview" width="1080" height="1350" aria-label="Post preview" style="background:#1cc7e6"></canvas>
+        <canvas id="preview" width="1080" height="1350" aria-label="Post preview"></canvas>
       </div>
       <div class="actions">
         <button class="btn primary" id="saveBtn">Save PNG</button>
@@ -286,11 +316,14 @@ select { font: inherit; font-size: 13px; color: var(--ink); background: var(--pa
     avatar: null, avatarIsSample: true,
     image: null, imageIsSample: true,
     ratio: 1, zoom: 1, cx: 0.5, cy: 0.5,
+    textScale: 1, nameScale: 1,
   };
   let lastImgRect = null;
   let lastXf = { ox: MARGIN_X, oy: MARGIN_Y, k: 1 };
-  let bgColor = '#1cc7e6';
-  const currentBg = () => ($('withBg').checked ? bgColor : null);
+  // Background: a color string or a loaded Image
+  let bgFill = '#1cc7e6';
+  let bgLabel = '#1CC7E6';
+  const currentBg = () => ($('withBg').checked ? bgFill : null);
 
   try {
     const saved = JSON.parse(localStorage.getItem('restyler-prefs') || '{}');
@@ -379,7 +412,7 @@ select { font: inherit; font-size: 13px; color: var(--ink); background: var(--pa
     });
   }
   function fbRuns(text) {
-    const reg = '400 26px ' + FONT, runs = [];
+    const reg = '400 ' + (26 * state.textScale) + 'px ' + FONT, runs = [];
     const re = /\[([^\]\n]+)\]/g; let last = 0, m;
     while ((m = re.exec(text))) {
       if (m.index > last) runs.push({ text: text.slice(last, m.index), font: reg, color: '#1c1e21' });
@@ -398,17 +431,18 @@ select { font: inherit; font-size: 13px; color: var(--ink); background: var(--pa
       L.img = { x: 0, y: 120, w: CARD_W, h: Math.round(CARD_W * state.ratio), r: 0 };
       L.iconsY = L.img.y + L.img.h + 28; L.iconSize = 44;
       const cap = state.caption.trim();
-      L.lineH = 37;
+      const ts = state.textScale;
+      L.lineH = Math.round(37 * ts);
       L.lines = cap ? wrapRuns([
-        { text: state.username || 'username', font: '600 25px ' + FONT, color: '#0c1014' },
-        { text: ' ' + cap, font: '400 25px ' + FONT, color: '#0c1014' }
+        { text: state.username || 'username', font: '600 ' + (25 * ts) + 'px ' + FONT, color: '#0c1014' },
+        { text: ' ' + cap, font: '400 ' + (25 * ts) + 'px ' + FONT, color: '#0c1014' }
       ], CARD_W - 80) : [];
       L.capY = L.iconsY + L.iconSize + 22;
       L.cardH = L.lines.length ? L.capY + L.lines.length * L.lineH + 34 : L.iconsY + L.iconSize + 30;
     } else {
       const pad = 40, av = 80;
       L.pad = pad; L.av = av;
-      L.lineH = 38;
+      L.lineH = Math.round(38 * state.textScale);
       const text = state.caption.replace(/\s+$/, '');
       L.lines = text.trim() ? wrapRuns(fbRuns(text), CARD_W - pad * 2) : [];
       L.textY = pad + av + 22;
@@ -473,6 +507,14 @@ select { font: inherit; font-size: 13px; color: var(--ink); background: var(--pa
     g.restore();
   }
 
+  function paintBg(g, bg, w, h) {
+    if (typeof bg === 'string') { g.fillStyle = bg; g.fillRect(0, 0, w, h); return; }
+    if (!imgReady(bg)) return;
+    const s = Math.max(w / bg.naturalWidth, h / bg.naturalHeight);
+    const dw = bg.naturalWidth * s, dh = bg.naturalHeight * s;
+    g.drawImage(bg, (w - dw) / 2, (h - dh) / 2, dw, dh);
+  }
+
   function render(target, scale, bg) {
     const L = computeLayout();
     // Output size: "fit" hugs the card; fixed heights center it and shrink it to fit the margins
@@ -487,7 +529,7 @@ select { font: inherit; font-size: 13px; color: var(--ink); background: var(--pa
     const g = target;
     g.setTransform(scale, 0, 0, scale, 0, 0);
     g.clearRect(0, 0, OUT_W, outH);
-    if (bg) { g.fillStyle = bg; g.fillRect(0, 0, OUT_W, outH); }
+    if (bg) paintBg(g, bg, OUT_W, outH);
     g.translate(ox, oy);
     g.scale(k, k);
     scale *= k; // shadows ignore transforms, so scale their blur/offset by hand
@@ -518,7 +560,7 @@ select { font: inherit; font-size: 13px; color: var(--ink); background: var(--pa
         drawCircleImage(g, state.avatar, acx, acy, 35);
         g.beginPath(); g.arc(acx, acy, 35, 0, Math.PI * 2); g.strokeStyle = 'rgba(0,0,0,.1)'; g.lineWidth = 1; g.stroke();
       }
-      g.font = '600 26px ' + FONT; g.fillStyle = '#0c1014'; g.textBaseline = 'middle'; g.textAlign = 'left';
+      g.font = '600 ' + (26 * state.nameScale) + 'px ' + FONT; g.fillStyle = '#0c1014'; g.textBaseline = 'middle'; g.textAlign = 'left';
       g.fillText(name, acx + 36 + 22, acy + 1);
 
       drawFeatured(g, L.img);
@@ -535,7 +577,7 @@ select { font: inherit; font-size: 13px; color: var(--ink); background: var(--pa
       const acx = L.pad + L.av / 2, acy = L.pad + L.av / 2;
       drawCircleImage(g, state.avatar, acx, acy, L.av / 2);
       g.beginPath(); g.arc(acx, acy, L.av / 2, 0, Math.PI * 2); g.strokeStyle = 'rgba(0,0,0,.08)'; g.lineWidth = 1; g.stroke();
-      g.font = '600 27px ' + FONT; g.fillStyle = '#050505'; g.textBaseline = 'middle'; g.textAlign = 'left';
+      g.font = '600 ' + (27 * state.nameScale) + 'px ' + FONT; g.fillStyle = '#050505'; g.textBaseline = 'middle'; g.textAlign = 'left';
       g.fillText(name, L.pad + L.av + 20, acy);
       drawLines(g, L.lines, L.pad, L.textY, L.lineH);
       if (L.img) { drawFeatured(g, L.img); lastImgRect = L.img; } else lastImgRect = null;
@@ -546,10 +588,10 @@ select { font: inherit; font-size: 13px; color: var(--ink); background: var(--pa
   }
 
   function redraw() {
-    const L = render(ctx, 1, currentBg());
+    const L = render(ctx, 1, bgFill);
     lastXf = { ox: L.ox, oy: L.oy, k: L.k };
     const scale = $('hiRes').checked ? 2 : 1;
-    $('spec').textContent = `${OUT_W * scale} × ${L.outH * scale} px · card ${Math.round(CARD_W * L.k * scale)} px wide · ${$('withBg').checked ? 'background ' + bgColor.toUpperCase() : 'transparent'}`;
+    $('spec').textContent = `${OUT_W * scale} × ${L.outH * scale} px · card ${Math.round(CARD_W * L.k * scale)} px wide · ${$('withBg').checked ? 'background ' + bgLabel : 'transparent background'}`;
     if (L.img) $('imgHeightOut').value = L.img.h + ' px';
   }
 
@@ -589,16 +631,24 @@ select { font: inherit; font-size: 13px; color: var(--ink); background: var(--pa
     syncUI(); redraw();
   }));
   $('hiRes').addEventListener('change', redraw);
+  function setTextSizes() {
+    $('textSize').value = state.textScale; $('textSizeOut').value = Math.round(state.textScale * 100) + '%';
+    $('nameSize').value = state.nameScale; $('nameSizeOut').value = Math.round(state.nameScale * 100) + '%';
+  }
+  $('textSize').addEventListener('input', e => { state.textScale = parseFloat(e.target.value); setTextSizes(); redraw(); });
+  $('nameSize').addEventListener('input', e => { state.nameScale = parseFloat(e.target.value); setTextSizes(); redraw(); });
+  $('resetText').addEventListener('click', () => { state.textScale = 1; state.nameScale = 1; setTextSizes(); redraw(); });
   $('outSize').addEventListener('change', () => { try { localStorage.setItem('restyler-size-v2', $('outSize').value); } catch (e) {} redraw(); });
   try { const sv = localStorage.getItem('restyler-size-v2'); if (sv && [...$('outSize').options].some(o => o.value === sv)) $('outSize').value = sv; } catch (e) {}
   $('withBg').addEventListener('change', () => { try { localStorage.setItem('restyler-withbg', $('withBg').checked ? '1' : '0'); } catch (e) {} redraw(); });
   try { $('withBg').checked = localStorage.getItem('restyler-withbg') === '1'; } catch (e) {}
-  function setBg(color, btn) {
-    bgColor = color;
-    canvas.style.background = color;
-    document.querySelectorAll('.bgpick button').forEach(x => x.setAttribute('aria-pressed', String(x === btn)));
-    $('customSwatch').classList.toggle('on', !btn);
-    if (!btn) $('customSwatch').style.background = color;
+  function setBg(fill, btn, label) {
+    bgFill = fill;
+    bgLabel = label || (typeof fill === 'string' ? fill.toUpperCase() : 'image');
+    document.querySelectorAll('.bgpick button, .bglib .pick').forEach(x => x.setAttribute('aria-pressed', String(x === btn)));
+    const custom = typeof fill === 'string' && !btn;
+    $('customSwatch').classList.toggle('on', custom);
+    if (custom) $('customSwatch').style.background = fill;
     redraw();
   }
   document.querySelectorAll('.bgpick button').forEach(b => b.addEventListener('click', () => setBg(b.dataset.bg, b)));
@@ -613,6 +663,102 @@ select { font: inherit; font-size: 13px; color: var(--ink); background: var(--pa
   let savedTheme = 'light';
   try { if (localStorage.getItem('restyler-theme') === 'dark') savedTheme = 'dark'; } catch (e) {}
   setTheme(savedTheme);
+
+  // ---------- Background library ----------
+  const BG_LIMIT = 30;
+  let bgItems = []; // {id, url, img}
+  let dbp = null;
+  function openDb() {
+    if (dbp) return dbp;
+    dbp = new Promise((res) => {
+      try {
+        const rq = indexedDB.open('restyler', 1);
+        rq.onupgradeneeded = () => rq.result.createObjectStore('bgs', { keyPath: 'id' });
+        rq.onsuccess = () => res(rq.result);
+        rq.onerror = () => res(null);
+      } catch (e) { res(null); }
+    });
+    return dbp;
+  }
+  async function dbDo(mode, fn) {
+    const db = await openDb(); if (!db) return null;
+    return new Promise((res) => {
+      try {
+        const tx = db.transaction('bgs', mode); const st = tx.objectStore('bgs');
+        const rq = fn(st);
+        tx.oncomplete = () => res(rq ? rq.result : null);
+        tx.onerror = tx.onabort = () => res(null);
+      } catch (e) { res(null); }
+    });
+  }
+  function renderBgLib() {
+    const lib = $('bgLib'); lib.textContent = '';
+    for (const it of bgItems) {
+      const wrap = document.createElement('div'); wrap.className = 'bgitem';
+      const pick = document.createElement('button');
+      pick.type = 'button'; pick.className = 'pick'; pick.style.backgroundImage = `url("${it.url}")`;
+      pick.setAttribute('aria-label', 'Use this background');
+      pick.setAttribute('aria-pressed', String(bgFill === it.img));
+      pick.addEventListener('click', () => setBg(it.img, pick, 'image'));
+      const del = document.createElement('button');
+      del.type = 'button'; del.className = 'del'; del.textContent = '×';
+      del.setAttribute('aria-label', 'Remove this background');
+      del.addEventListener('click', () => removeBg(it.id));
+      wrap.append(pick, del); lib.append(wrap);
+    }
+  }
+  function loadImg(blob) {
+    return new Promise((res, rej) => {
+      const url = URL.createObjectURL(blob); const img = new Image();
+      img.onload = () => res({ url, img }); img.onerror = rej; img.src = url;
+    });
+  }
+  async function addBackgrounds(files) {
+    const list = Array.from(files || []).filter(f => f && f.type.startsWith('image/'));
+    if (!list.length) { setStatus('That file isn’t an image. Use a PNG, JPG, WebP or GIF.'); return; }
+    let last = null;
+    for (const f of list) {
+      try {
+        const { url, img } = await loadImg(f);
+        const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+        bgItems.unshift({ id, url, img }); last = img;
+        dbDo('readwrite', st => st.put({ id, blob: f, added: Date.now() }));
+      } catch (e) { setStatus('Couldn’t read one of those images. Try saving it as PNG or JPG first.'); }
+    }
+    while (bgItems.length > BG_LIMIT) { const old = bgItems.pop(); URL.revokeObjectURL(old.url); dbDo('readwrite', st => st.delete(old.id)); }
+    renderBgLib();
+    if (last) {
+      const btn = [...document.querySelectorAll('.bglib .pick')][0];
+      setBg(last, btn, 'image');
+      setStatus(list.length > 1 ? 'Backgrounds added.' : 'Background added. Tick “Include background” to save it into the PNG.');
+    }
+  }
+  function removeBg(id) {
+    const i = bgItems.findIndex(b => b.id === id); if (i < 0) return;
+    const [it] = bgItems.splice(i, 1);
+    dbDo('readwrite', st => st.delete(id));
+    if (bgFill === it.img) { const first = document.querySelector('.bgpick button'); setBg(first.dataset.bg, first); }
+    URL.revokeObjectURL(it.url);
+    renderBgLib();
+  }
+  (async () => {
+    const rows = await dbDo('readonly', st => st.getAll());
+    if (!rows || !rows.length) return;
+    rows.sort((a, b) => b.added - a.added);
+    for (const r of rows.slice(0, BG_LIMIT)) {
+      try { const { url, img } = await loadImg(r.blob); bgItems.push({ id: r.id, url, img }); } catch (e) {}
+    }
+    renderBgLib();
+  })();
+  (() => {
+    const zone = $('dzBg'), input = $('bgFile');
+    zone.addEventListener('click', () => input.click());
+    zone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); } });
+    input.addEventListener('change', () => { addBackgrounds(input.files); input.value = ''; });
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('over'));
+    zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('over'); addBackgrounds(e.dataTransfer.files); });
+  })();
 
   // ---------- Image inputs: click, drop, paste ----------
   function loadFile(file, which) {
@@ -651,6 +797,7 @@ select { font: inherit; font-size: 13px; color: var(--ink); background: var(--pa
     const it = items.find(i => i.type.startsWith('image/'));
     if (!it) return;
     e.preventDefault();
+    if (document.activeElement === $('dzBg')) { addBackgrounds([it.getAsFile()]); return; }
     const which = document.activeElement === $('dzAvatar') ? 'avatar' : 'image';
     loadFile(it.getAsFile(), which);
   });
